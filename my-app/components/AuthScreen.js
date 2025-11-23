@@ -1,5 +1,5 @@
 // AuthScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useRouter } from 'expo-router';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState('login');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '178886195513-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+    });
+  }, []);
 
   const handleSubmit = async () => {
     try {
+      setLoading(true);
       if (mode === 'signup') {
         await createUserWithEmailAndPassword(auth, email, password);
         Alert.alert('Success', 'Account created successfully!', [
@@ -35,6 +45,28 @@ export default function AuthScreen() {
       }
     } catch (error) {
       Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+
+      const googleCredential = GoogleAuthProvider.credential(userInfo.data.idToken);
+      await signInWithCredential(auth, googleCredential);
+
+      Alert.alert('Success', 'Signed in with Google!', [
+        { text: 'OK', onPress: () => router.push('/') }
+      ]);
+    } catch (error) {
+      console.error('Google Sign-In Error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,15 +111,38 @@ export default function AuthScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>
-            {mode === 'signup' ? 'Sign Up' : 'Sign In'}
-          </Text>
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {mode === 'signup' ? 'Sign Up' : 'Sign In'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.divider} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={handleGoogleSignIn}
+          disabled={loading}
+        >
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.switchButton}
           onPress={() => setMode(mode === 'signup' ? 'login' : 'signup')}
+          disabled={loading}
         >
           <Text style={styles.switchButtonText}>
             {mode === 'signup' ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
@@ -181,5 +236,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dividerText: {
+    color: '#666666',
+    paddingHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  googleButtonText: {
+    color: '#000000',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
