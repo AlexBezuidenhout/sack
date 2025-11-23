@@ -1,0 +1,14 @@
+{
+  "name": "houseit",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "my-app"
+  ],
+  "scripts": {
+    "start": "cd my-app && npm start",
+    "build": "cd my-app && npm run build",
+    "test": "cd my-app && npm test",
+    "install": "npm ci --workspaces"
+  }
+}
